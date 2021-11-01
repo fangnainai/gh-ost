@@ -225,6 +225,8 @@ type MigrationContext struct {
 
 	recentBinlogCoordinates mysql.BinlogCoordinates
 
+	AfterDMLSleepTime				int64
+
 	Log Logger
 }
 

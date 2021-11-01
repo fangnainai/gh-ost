@@ -43,6 +43,7 @@ type EventsStreamer struct {
 	eventsChannel            chan *binlog.BinlogEntry
 	binlogReader             *binlog.GoMySQLReader
 	name                     string
+	initialDMLLogCoordinates *mysql.BinlogCoordinates
 }
 
 func NewEventsStreamer(migrationContext *base.MigrationContext) *EventsStreamer {
@@ -162,6 +163,28 @@ func (this *EventsStreamer) readCurrentBinlogCoordinates() error {
 		return fmt.Errorf("Got no results from SHOW MASTER STATUS. Bailing out")
 	}
 	this.migrationContext.Log.Debugf("Streamer binlog coordinates: %+v", *this.initialBinlogCoordinates)
+	return nil
+}
+
+func (this *EventsStreamer) readStartDMLBinlogPos() error {
+	query := `show /* gh-ost readCurrentBinlogPos in adding DML listener */ master status`
+	foundMasterStatus := false
+	err := sqlutils.QueryRowsMap(this.db, query, func(m sqlutils.RowMap) error {
+		this.initialDMLLogCoordinates = &mysql.BinlogCoordinates{
+			LogFile: m.GetString("File"),
+			LogPos:  m.GetInt64("Position"),
+		}
+		foundMasterStatus = true
+
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	if !foundMasterStatus {
+		return fmt.Errorf("Got no results from SHOW MASTER STATUS. Bailing out")
+	}
+	this.migrationContext.Log.Infof("DML start binlog coordinates: %+v", *this.initialDMLLogCoordinates)
 	return nil
 }
 
