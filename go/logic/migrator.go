@@ -1069,7 +1069,19 @@ func (this *Migrator) addDMLEventsListener() error {
 			return nil
 		},
 	)
-	return err
+	if err != nil {
+		return err
+	}
+
+	if err = this.eventsStreamer.readStartDMLBinlogPos(); err != nil {
+		return err
+	}
+
+	this.migrationContext.Log.Infof("Sleep %+v second after adding DML events listener. Sleeping...",
+		this.migrationContext.AfterDMLSleepTime)
+	time.Sleep(time.Duration(this.migrationContext.AfterDMLSleepTime) * time.Second)
+
+	return nil
 }
 
 // initiateThrottler kicks in the throttling collection and the throttling checks.
